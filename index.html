@@ -119,7 +119,7 @@
 <button class="audio-btn" id="audioBtn">◌ &nbsp;sound</button>
 <div class="stage" id="stage"></div>
 
-<audio id="track-m1" preload="none"></audio>
+<audio id="track-m1" preload="auto"></audio>
 <audio id="track-m2" preload="none"></audio>
 <audio id="track-m3" preload="none"></audio>
 
@@ -365,12 +365,16 @@ let suppressAutoResume = false;
 const targetVolumes = { m1: 1, m2: 0, m3: 0 };
 const started = { m1: false, m2: false, m3: false };
 
+let m1Ready = false;
+
 function initAudio(){
   if(audioReady) return;
   TRACKS.m1.src = "assets/music/nuvole-bianche.mp3";
   TRACKS.m2.src = "assets/music/experience.mp3";
   TRACKS.m3.src = "assets/music/arrival-of-the-birds.mp3";
   audioReady = true;
+
+  TRACKS.m1.addEventListener('canplaythrough', () => { m1Ready = true; }, { once: true });
 
   Object.values(TRACKS).forEach(a => {
     a.volume = 0; // whichever track plays starts silent, then fades to its target
@@ -389,6 +393,10 @@ function initAudio(){
     });
   });
 }
+
+// start fetching the first track immediately on page load — by the time she
+// taps sound, it's likely already buffered enough to play instantly
+initAudio();
 
 // only ever starts a track the first time its movement is actually needed —
 // never plays all three at once, which is what caused the overlap/silence issue
@@ -439,10 +447,17 @@ const audioBtn = document.getElementById('audioBtn');
 audioBtn.addEventListener('click', () => {
   if(!soundOn){
     soundOn = true;
-    initAudio();
-    TRACKS.m1.load();
+    if(!m1Ready){
+      audioBtn.textContent = '…  loading';
+      const showReady = () => {
+        audioBtn.textContent = '◉  sound'; audioBtn.classList.add('on');
+      };
+      if(m1Ready) showReady();
+      else TRACKS.m1.addEventListener('canplaythrough', showReady, { once: true });
+    } else {
+      audioBtn.textContent = '◉  sound'; audioBtn.classList.add('on');
+    }
     ensureStarted('m1');
-    audioBtn.textContent = '◉  sound'; audioBtn.classList.add('on');
     applyVolumes(2800);
   } else {
     soundOn = false;
